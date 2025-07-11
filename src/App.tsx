@@ -106,6 +106,63 @@ interface WelcomeScreenProps {
 const WelcomeScreen = ({ envValidated }: WelcomeScreenProps) => {
   const envInfo = getEnvInfo();
 
+  // Fixed functions
+  const handleGoToLogin = () => {
+    // For now, show alert since no routing yet
+    alert('Login page belum dibuat. Ini akan redirect ke /login setelah routing setup.');
+    console.log('🔗 Navigate to: /login');
+  };
+
+  const handleShowEnvironmentInfo = () => {
+    console.log('🌍 ENVIRONMENT INFO:');
+    console.table(envInfo);
+    console.log('📊 Full ENV Object:', ENV);
+    
+    // Also show visual feedback
+    alert(`Environment Info logged to console!\n\nEnvironment: ${envInfo.environment}\nVersion: ${envInfo.version}\nDev Mode: ${envInfo.isDev}`);
+  };
+
+  const handleShowBrowserInfo = () => {
+    const browserInfo = {
+      userAgent: navigator.userAgent,
+      language: navigator.language,
+      languages: navigator.languages,
+      platform: navigator.platform,
+      cookieEnabled: navigator.cookieEnabled,
+      onLine: navigator.onLine,
+      hardwareConcurrency: navigator.hardwareConcurrency,
+      maxTouchPoints: navigator.maxTouchPoints,
+      vendor: navigator.vendor,
+      appName: navigator.appName,
+      appVersion: navigator.appVersion,
+      // Screen info
+      screenWidth: screen.width,
+      screenHeight: screen.height,
+      colorDepth: screen.colorDepth,
+      // Window info
+      windowWidth: window.innerWidth,
+      windowHeight: window.innerHeight,
+      // Location info
+      href: window.location.href,
+      protocol: window.location.protocol,
+      host: window.location.host,
+    };
+
+    console.log('🌐 BROWSER INFO:');
+    console.table(browserInfo);
+    console.log('📱 Navigator Object:', navigator);
+    console.log('🖥️ Screen Object:', screen);
+    console.log('🪟 Window Object Details:', {
+      location: window.location,
+      history: window.history.length,
+      localStorage: !!window.localStorage,
+      sessionStorage: !!window.sessionStorage,
+    });
+    
+    // Visual feedback
+    alert(`Browser Info logged to console!\n\nBrowser: ${navigator.appName}\nPlatform: ${navigator.platform}\nLanguage: ${navigator.language}`);
+  };
+
   return (
     <div className="max-w-4xl mx-auto">
       {/* Header */}
@@ -199,7 +256,7 @@ const WelcomeScreen = ({ envValidated }: WelcomeScreenProps) => {
           <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
           <div className="space-y-3">
             <Button 
-              onClick={() => window.location.href = '/login'}
+              onClick={handleGoToLogin}
               className="w-full"
             >
               Go to Login
@@ -209,7 +266,7 @@ const WelcomeScreen = ({ envValidated }: WelcomeScreenProps) => {
               <>
                 <Button 
                   variant="outline"
-                  onClick={() => console.table(envInfo)}
+                  onClick={handleShowEnvironmentInfo}
                   className="w-full"
                 >
                   Show Environment Info
@@ -217,16 +274,7 @@ const WelcomeScreen = ({ envValidated }: WelcomeScreenProps) => {
                 
                 <Button 
                   variant="outline"
-                  onClick={() => {
-                    const info = {
-                      userAgent: navigator.userAgent,
-                      language: navigator.language,
-                      platform: navigator.platform,
-                      cookieEnabled: navigator.cookieEnabled,
-                      onLine: navigator.onLine,
-                    };
-                    console.table(info);
-                  }}
+                  onClick={handleShowBrowserInfo}
                   className="w-full"
                 >
                   Show Browser Info
@@ -236,7 +284,10 @@ const WelcomeScreen = ({ envValidated }: WelcomeScreenProps) => {
             
             <Button 
               variant="outline"
-              onClick={() => window.location.reload()}
+              onClick={() => {
+                console.log('🔄 Reloading application...');
+                window.location.reload();
+              }}
               className="w-full"
             >
               Reload Application

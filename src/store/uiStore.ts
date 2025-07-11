@@ -1,147 +1,120 @@
 /**
  * UI Store - AKBID Lab System
- * UI state management for global interface controls
+ * Security: UI state management
  * Status: Complete
  */
-import { create } from 'zustand';
 
-export interface UIState {
-  // Sidebar
-  sidebarOpen: boolean;
-  sidebarCollapsed: boolean;
-  
-  // Theme
-  theme: 'light' | 'dark' | 'system';
-  
-  // Loading states
-  globalLoading: boolean;
-  pageLoading: boolean;
-  
-  // Modals
-  activeModal: string | null;
-  modalData: any;
-  
-  // Notifications
-  notifications: Notification[];
-  
-  // Mobile
-  isMobile: boolean;
-  
-  // Actions
-  toggleSidebar: () => void;
-  setSidebarOpen: (open: boolean) => void;
-  setSidebarCollapsed: (collapsed: boolean) => void;
-  setTheme: (theme: 'light' | 'dark' | 'system') => void;
-  setGlobalLoading: (loading: boolean) => void;
-  setPageLoading: (loading: boolean) => void;
-  openModal: (modalId: string, data?: any) => void;
-  closeModal: () => void;
-  addNotification: (notification: Omit<Notification, 'id'>) => void;
-  removeNotification: (id: string) => void;
-  clearNotifications: () => void;
-  setIsMobile: (isMobile: boolean) => void;
-}
+import { create } from 'zustand';
+import { immer } from 'zustand/middleware/immer';
 
 interface Notification {
   id: string;
   type: 'success' | 'error' | 'warning' | 'info';
   title: string;
-  message: string;
+  message?: string;
   duration?: number;
-  action?: {
-    label: string;
-    handler: () => void;
-  };
 }
 
-export const useUIStore = create<UIState>((set, get) => ({
-  // Initial state
-  sidebarOpen: true,
-  sidebarCollapsed: false,
-  theme: 'system',
-  globalLoading: false,
-  pageLoading: false,
-  activeModal: null,
-  modalData: null,
-  notifications: [],
-  isMobile: window.innerWidth < 768,
-
+interface UIState {
+  // Sidebar state
+  sidebarOpen: boolean;
+  sidebarCollapsed: boolean;
+  
+  // Modal state
+  activeModal: string | null;
+  modalData: unknown;
+  
+  // Loading states
+  globalLoading: boolean;
+  loadingStates: Record<string, boolean>;
+  
+  // Notifications
+  notifications: Notification[];
+  
   // Actions
-  toggleSidebar: () => {
-    set((state) => ({ sidebarOpen: !state.sidebarOpen }));
-  },
+  toggleSidebar: () => void;
+  collapseSidebar: (collapsed: boolean) => void;
+  openModal: (modalName: string, data?: unknown) => void;
+  closeModal: () => void;
+  setGlobalLoading: (loading: boolean) => void;
+  setLoading: (key: string, loading: boolean) => void;
+  addNotification: (notification: Omit<Notification, 'id'>) => void;
+  removeNotification: (id: string) => void;
+  clearNotifications: () => void;
+}
 
-  setSidebarOpen: (open: boolean) => {
-    set({ sidebarOpen: open });
-  },
+export const useUIStore = create<UIState>()(
+  immer((set) => ({
+    // Initial state
+    sidebarOpen: true,
+    sidebarCollapsed: false,
+    activeModal: null,
+    modalData: null,
+    globalLoading: false,
+    loadingStates: {},
+    notifications: [],
 
-  setSidebarCollapsed: (collapsed: boolean) => {
-    set({ sidebarCollapsed: collapsed });
-  },
+    // Actions
+    toggleSidebar: () => {
+      set((state) => {
+        state.sidebarOpen = !state.sidebarOpen;
+      });
+    },
 
-  setTheme: (theme: 'light' | 'dark' | 'system') => {
-    set({ theme });
-    
-    // Apply theme to document
-    const root = document.documentElement;
-    if (theme === 'dark') {
-      root.classList.add('dark');
-    } else if (theme === 'light') {
-      root.classList.remove('dark');
-    } else {
-      // System theme
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      if (prefersDark) {
-        root.classList.add('dark');
-      } else {
-        root.classList.remove('dark');
-      }
-    }
-  },
+    collapseSidebar: (collapsed) => {
+      set((state) => {
+        state.sidebarCollapsed = collapsed;
+      });
+    },
 
-  setGlobalLoading: (globalLoading: boolean) => {
-    set({ globalLoading });
-  },
+    openModal: (modalName, data = null) => {
+      set((state) => {
+        state.activeModal = modalName;
+        state.modalData = data;
+      });
+    },
 
-  setPageLoading: (pageLoading: boolean) => {
-    set({ pageLoading });
-  },
+    closeModal: () => {
+      set((state) => {
+        state.activeModal = null;
+        state.modalData = null;
+      });
+    },
 
-  openModal: (modalId: string, data?: any) => {
-    set({ activeModal: modalId, modalData: data });
-  },
+    setGlobalLoading: (loading) => {
+      set((state) => {
+        state.globalLoading = loading;
+      });
+    },
 
-  closeModal: () => {
-    set({ activeModal: null, modalData: null });
-  },
+    setLoading: (key, loading) => {
+      set((state) => {
+        state.loadingStates[key] = loading;
+      });
+    },
 
-  addNotification: (notification: Omit<Notification, 'id'>) => {
-    const id = Math.random().toString(36).substr(2, 9);
-    const newNotification: Notification = { ...notification, id };
-    
-    set((state) => ({
-      notifications: [...state.notifications, newNotification],
-    }));
+    addNotification: (notification) => {
+      const id = Date.now().toString();
+      set((state) => {
+        state.notifications.push({
+          ...notification,
+          id,
+        });
+      });
+    },
 
-    // Auto remove after duration
-    if (notification.duration !== 0) {
-      setTimeout(() => {
-        get().removeNotification(id);
-      }, notification.duration || 5000);
-    }
-  },
+    removeNotification: (id) => {
+      set((state) => {
+        state.notifications = state.notifications.filter((n: { id: string; }) => n.id !== id);
+      });
+    },
 
-  removeNotification: (id: string) => {
-    set((state) => ({
-      notifications: state.notifications.filter(n => n.id !== id),
-    }));
-  },
+    clearNotifications: () => {
+      set((state) => {
+        state.notifications = [];
+      });
+    },
+  }))
+);
 
-  clearNotifications: () => {
-    set({ notifications: [] });
-  },
-
-  setIsMobile: (isMobile: boolean) => {
-    set({ isMobile });
-  },
-}));
+export type { UIState, Notification };
