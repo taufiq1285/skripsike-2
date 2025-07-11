@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { ENV, validateEnv, getEnvInfo } from './lib/constants/env';
-import { DevIndicators, DevToolbar } from './components/dev-tools';
+import { DevIndicators, DevToolbar, DevInfo } from './components/dev-tools';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { LoadingState } from './components/common/LoadingState';
 import { Button } from './components/ui/Button';
@@ -67,9 +67,14 @@ function App() {
     <ErrorBoundary>
       <BrowserRouter>
         <div className="min-h-screen bg-gray-50">
-          {/* Development Tools */}
-          <DevIndicators />
-          <DevToolbar />
+          {/* Development Tools - Only shown in development */}
+          {ENV.IS_DEV && (
+            <>
+              <DevIndicators />
+              <DevInfo />
+              <DevToolbar />
+            </>
+          )}
           
           {/* Main Application */}
           <div className="container mx-auto px-4 py-8">
@@ -106,7 +111,7 @@ const WelcomeScreen = ({ envValidated }: WelcomeScreenProps) => {
       {/* Header */}
       <div className="text-center mb-8">
         <div className="inline-flex items-center gap-2 mb-4">
-          <div className="w-12 h-12 bg-akbid-600 rounded-lg flex items-center justify-center text-white text-xl font-bold">
+          <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center text-white text-xl font-bold">
             A
           </div>
           <div>
@@ -119,144 +124,141 @@ const WelcomeScreen = ({ envValidated }: WelcomeScreenProps) => {
           <Badge variant={envInfo.isDev ? "warning" : "success"}>
             {envInfo.environment.toUpperCase()}
           </Badge>
-          <Badge variant="secondary">v{envInfo.version}</Badge>
-          {envValidated && <Badge variant="success">Ready</Badge>}
+          <Badge variant={envValidated ? "success" : "error"}>
+            {envValidated ? "ENV ✓" : "ENV ✗"}
+          </Badge>
+          <Badge variant={envInfo.supabaseConfigured ? "success" : "warning"}>
+            {envInfo.supabaseConfigured ? "DB ✓" : "DB ⚠️"}
+          </Badge>
+          {ENV.IS_DEV && (
+            <Badge variant="info">
+              DEV MODE
+            </Badge>
+          )}
         </div>
       </div>
 
-      {/* Environment Status */}
-      <div className="grid md:grid-cols-2 gap-6 mb-8">
-        <Card className="p-6">
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            🔧 System Status
-          </h2>
-          <div className="space-y-3">
-            <StatusItem 
-              label="Environment" 
-              value={envInfo.environment} 
-              status={envValidated ? "success" : "error"} 
-            />
-            <StatusItem 
-              label="Database Connection" 
-              value={envInfo.supabaseConfigured ? "Connected" : "Not Configured"} 
-              status={envInfo.supabaseConfigured ? "success" : "warning"} 
-            />
-            <StatusItem 
-              label="PWA Support" 
-              value={envInfo.pwaEnabled ? "Enabled" : "Disabled"} 
-              status={envInfo.pwaEnabled ? "success" : "info"} 
-            />
-            <StatusItem 
-              label="Development Mode" 
-              value={envInfo.devMode ? "ON" : "OFF"} 
-              status={envInfo.devMode ? "warning" : "info"} 
-            />
-          </div>
-        </Card>
-
-        <Card className="p-6">
-          <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            🏥 Lab Configuration
-          </h2>
-          <div className="space-y-3">
-            <StatusItem 
-              label="Laboratory Rooms" 
-              value={`${ENV.LAB_COUNT} Labs`} 
-              status="success" 
-            />
-            <StatusItem 
-              label="Storage Rooms" 
-              value={`${ENV.DEPO_COUNT} Depo`} 
-              status="success" 
-            />
-            <StatusItem 
-              label="User Roles" 
-              value="4 Roles (Admin, Dosen, Laboran, Mahasiswa)" 
-              status="success" 
-            />
-            <StatusItem 
-              label="File Upload" 
-              value={`Max ${Math.round(ENV.MAX_FILE_SIZE / 1024 / 1024)}MB`} 
-              status="info" 
-            />
-          </div>
-        </Card>
-      </div>
-
-      {/* Next Steps */}
-      <Card className="p-6">
-        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          🚀 Next Steps
-        </h2>
-        <div className="grid md:grid-cols-3 gap-4">
-          <div className="text-center p-4 border rounded-lg">
-            <div className="text-2xl mb-2">🔐</div>
-            <h3 className="font-medium mb-1">Authentication</h3>
-            <p className="text-sm text-gray-600">Setup Supabase authentication</p>
-          </div>
-          <div className="text-center p-4 border rounded-lg">
-            <div className="text-2xl mb-2">🗄️</div>
-            <h3 className="font-medium mb-1">Database</h3>
-            <p className="text-sm text-gray-600">Create database schema</p>
-          </div>
-          <div className="text-center p-4 border rounded-lg">
-            <div className="text-2xl mb-2">👥</div>
-            <h3 className="font-medium mb-1">User Roles</h3>
-            <p className="text-sm text-gray-600">Implement RBAC system</p>
-          </div>
-        </div>
-      </Card>
-
-      {/* Development Info */}
+      {/* Development Notice */}
       {ENV.IS_DEV && (
-        <div className="mt-8 text-center">
-          <p className="text-sm text-gray-500">
-            🔧 Development build - {envInfo.timestamp}
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-8">
+          <div className="flex items-center gap-2 text-yellow-800 mb-2">
+            <span className="text-lg">⚡</span>
+            <span className="font-semibold">Development Mode Active</span>
+          </div>
+          <p className="text-yellow-700 text-sm">
+            Development tools are available. Check the bottom-right corner for the dev toolbar 
+            and top-left for detailed debugging information.
           </p>
-          <p className="text-xs text-gray-400 mt-1">
-            Use the development toolbar (bottom-right) for debugging tools
-          </p>
+          {ENV.DEV_TOOLBAR && (
+            <div className="mt-2 text-xs text-yellow-600">
+              🛠️ Dev Toolbar: Enabled | 
+              🔄 Role Switch: {ENV.DEV_ROLE_SWITCH ? 'Enabled' : 'Disabled'} | 
+              🚀 Quick Login: {ENV.DEV_QUICK_LOGIN ? 'Enabled' : 'Disabled'}
+            </div>
+          )}
         </div>
       )}
-    </div>
-  );
-};
 
-// Status Item Component
-interface StatusItemProps {
-  label: string;
-  value: string;
-  status: 'success' | 'warning' | 'error' | 'info';
-}
+      {/* Main Content */}
+      <div className="grid md:grid-cols-2 gap-8">
+        {/* System Status */}
+        <Card className="p-6">
+          <h2 className="text-xl font-semibold mb-4">System Status</h2>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-gray-600">Application</span>
+              <Badge variant="success">Running</Badge>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-gray-600">Environment</span>
+              <Badge variant={envInfo.isDev ? "warning" : "success"}>
+                {envInfo.environment}
+              </Badge>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-gray-600">Database</span>
+              <Badge variant={envInfo.supabaseConfigured ? "success" : "error"}>
+                {envInfo.supabaseConfigured ? "Connected" : "Not Configured"}
+              </Badge>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-gray-600">PWA</span>
+              <Badge variant={envInfo.pwaEnabled ? "success" : "secondary"}>
+                {envInfo.pwaEnabled ? "Enabled" : "Disabled"}
+              </Badge>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-gray-600">Version</span>
+              <span className="font-mono text-sm">{envInfo.version}</span>
+            </div>
+          </div>
+        </Card>
 
-const StatusItem = ({ label, value, status }: StatusItemProps) => {
-  const getStatusColor = () => {
-    switch (status) {
-      case 'success': return 'text-green-600';
-      case 'warning': return 'text-yellow-600';
-      case 'error': return 'text-red-600';
-      case 'info': return 'text-blue-600';
-      default: return 'text-gray-600';
-    }
-  };
+        {/* Quick Actions */}
+        <Card className="p-6">
+          <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
+          <div className="space-y-3">
+            <Button 
+              onClick={() => window.location.href = '/login'}
+              className="w-full"
+            >
+              Go to Login
+            </Button>
+            
+            {ENV.IS_DEV && (
+              <>
+                <Button 
+                  variant="outline"
+                  onClick={() => console.table(envInfo)}
+                  className="w-full"
+                >
+                  Show Environment Info
+                </Button>
+                
+                <Button 
+                  variant="outline"
+                  onClick={() => {
+                    const info = {
+                      userAgent: navigator.userAgent,
+                      language: navigator.language,
+                      platform: navigator.platform,
+                      cookieEnabled: navigator.cookieEnabled,
+                      onLine: navigator.onLine,
+                    };
+                    console.table(info);
+                  }}
+                  className="w-full"
+                >
+                  Show Browser Info
+                </Button>
+              </>
+            )}
+            
+            <Button 
+              variant="outline"
+              onClick={() => window.location.reload()}
+              className="w-full"
+            >
+              Reload Application
+            </Button>
+          </div>
+        </Card>
+      </div>
 
-  const getStatusIcon = () => {
-    switch (status) {
-      case 'success': return '✅';
-      case 'warning': return '⚠️';
-      case 'error': return '❌';
-      case 'info': return 'ℹ️';
-      default: return '•';
-    }
-  };
-
-  return (
-    <div className="flex justify-between items-center">
-      <span className="text-sm text-gray-700">{label}</span>
-      <span className={`text-sm font-medium flex items-center gap-1 ${getStatusColor()}`}>
-        <span className="text-xs">{getStatusIcon()}</span>
-        {value}
-      </span>
+      {/* Footer */}
+      <div className="mt-12 text-center text-gray-500 text-sm">
+        <p>
+          Built with React + TypeScript + Vite + Supabase
+        </p>
+        <p className="mt-1">
+          © 2024 AKBID Lab System - Version {envInfo.version}
+        </p>
+        {ENV.IS_DEV && (
+          <p className="mt-1 text-yellow-600">
+            🔧 Development build - {envInfo.timestamp}
+          </p>
+        )}
+      </div>
     </div>
   );
 };

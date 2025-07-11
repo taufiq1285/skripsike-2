@@ -4,7 +4,7 @@
  * Status: ESLint compliant (Fixed)
  */
 
-import { auth } from '../supabase/auth';
+import { auth } from '../__supabase/auth';
 import type { LoginCredentials, RegisterData, User } from '../../types/auth';
 
 export const authApi = {

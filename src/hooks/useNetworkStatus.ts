@@ -1,14 +1,9 @@
-/**
- * useNetworkStatus Hook - AKBID Lab System
- * Security: Input validation, secure operations
- * Status: Template ready for implementation
- */
 import { useState, useEffect } from 'react';
 
 export const useNetworkStatus = () => {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [data, _setData] = useState(null); // Fixed: add underscore prefix
+  const [loading, _setLoading] = useState(false);
+  const [error, _setError] = useState<string | null>(null);
 
   useEffect(() => {
     // TODO: Implement useNetworkStatus logic

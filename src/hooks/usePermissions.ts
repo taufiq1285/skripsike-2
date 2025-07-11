@@ -5,20 +5,33 @@
  */
 import { useAuth } from './useAuth';
 import { useRole } from './useRole';
-import { Permission, PERMISSIONS } from '../lib/rbac/permissions';
+import { PERMISSIONS } from '../lib/rbac/permissions';
 
 export const usePermissions = () => {
+  // Ambil permissions dari useAuth
   const { permissions: userPermissions } = useAuth();
-  const { hasPermission, hasAnyPermission, hasAllPermissions } = useRole();
+  
+  // Ambil semua data yang diperlukan dari useRole dengan destructuring yang benar
+  const { 
+    currentRole,
+    rolePermissions,
+    hasPermission, 
+    hasAnyPermission, 
+    hasAllPermissions 
+  } = useRole();
 
   return {
     // All available permissions
     PERMISSIONS,
     
-    // User's current permissions
+    // User's current permissions dari auth
     userPermissions,
     
-    // Permission check functions
+    // Current role info dari useRole
+    currentRole,
+    rolePermissions,
+    
+    // Permission check functions dari useRole
     hasPermission,
     hasAnyPermission,
     hasAllPermissions,

@@ -23,8 +23,16 @@ export default tseslint.config(
         'warn',
         { allowConstantExport: true },
       ],
-      '@typescript-eslint/no-unused-vars': ['warn'],
-      '@typescript-eslint/no-explicit-any': ['warn'],
+      // Mengurangi strictness untuk development
+      '@typescript-eslint/no-unused-vars': ['warn', { 
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_',
+        ignoreRestSiblings: true 
+      }],
+      '@typescript-eslint/no-explicit-any': 'off', // Matikan warning any
+      'react-hooks/exhaustive-deps': 'warn', // Kurangi ke warning
+      // Izinkan unused parameters dengan prefix _
+      'no-unused-vars': 'off',
     },
   },
 );

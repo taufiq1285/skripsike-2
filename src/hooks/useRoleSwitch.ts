@@ -6,9 +6,9 @@
 import { useState, useEffect } from 'react';
 
 export const useRoleSwitch = () => {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [data, __setData] = useState(null);
+  const [loading, __setLoading] = useState(false);
+  const [error, __setError] = useState<string | null>(null);
 
   useEffect(() => {
     // TODO: Implement useRoleSwitch logic

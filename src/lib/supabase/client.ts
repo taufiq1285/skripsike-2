@@ -41,7 +41,7 @@ export const checkConnection = async (): Promise<boolean> => {
       return false;
     }
 
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('health_check')
       .select('*')
       .limit(1);

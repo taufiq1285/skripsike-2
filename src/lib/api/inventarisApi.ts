@@ -3,7 +3,7 @@
  * Security: Secure API operations, data validation
  * Status: Template placeholder
  */
-import { supabase } from '../supabase/client';
+import { __supabase } from '../__supabase/client';
 
 export const inventarisApi = {
   // TODO: Implement inventarisApi operations

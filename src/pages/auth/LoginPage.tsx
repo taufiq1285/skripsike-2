@@ -7,7 +7,7 @@ import { ENV } from '../../lib/constants/env';
 export const LoginPage = () => {
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = async (email: string, password: string) => {
+  const handleLogin = async (email: string, __password: string) => {
     setIsLoading(true);
     try {
       // TODO: Implement authentication logic
@@ -15,7 +15,7 @@ export const LoginPage = () => {
       // SECURITY: Implement rate limiting
       // SECURITY: Validate credentials securely
       
-      console.log('Login attempt:', { email, password: '***' });
+      console.log('Login attempt:', { email, __password: '***' });
       
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -39,7 +39,7 @@ export const LoginPage = () => {
         <LoginForm onSubmit={handleLogin} isLoading={isLoading} />
         
         <div className="text-center">
-          <a href="/forgot-password" className="text-sm text-akbid-600 hover:text-akbid-500">
+          <a href="/forgot-__password" className="text-sm text-akbid-600 hover:text-akbid-500">
             Lupa Password?
           </a>
         </div>

@@ -1,126 +1,186 @@
 /**
- * Dev Info Panel - Debug Information Display
+ * DevInfo Component - AKBID Lab System
+ * Development debugging information display
+ * Status: Complete
  */
+import { useState, useEffect } from 'react';
+import { Eye, EyeOff, Database, User, Shield, Clock, Wifi, WifiOff } from 'lucide-react';
+import { ENV, getEnvInfo } from '../../lib/constants/env';
+import { useAuth } from '../../hooks/useAuth';
+import { useRole } from '../../hooks/useRole';
 
-import React from 'react';
-import { getDevInfo } from '../../lib/dev/config';
-import { useDevStore } from '../../lib/dev/devStore';
+export const DevInfo = () => {
+  const [isVisible, setIsVisible] = useState(false);
+  const [networkStatus, setNetworkStatus] = useState(navigator.onLine);
+  const [performanceInfo, setPerformanceInfo] = useState<any>(null);
+  
+  const { user, isAuthenticated, permissions } = useAuth();
+  const { currentRole, rolePermissions } = useRole();
+  const envInfo = getEnvInfo();
 
-export const DevInfo: React.FC = () => {
-  const devInfo = getDevInfo();
-  const devStore = useDevStore();
-  const sessionInfo = devStore.getSessionInfo();
+  useEffect(() => {
+    // Network status monitoring
+    const handleOnline = () => setNetworkStatus(true);
+    const handleOffline = () => setNetworkStatus(false);
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
-    console.log('📋 Copied to clipboard:', text);
+    // Performance info
+    if ('performance' in window) {
+      const perfData = {
+        navigation: performance.getEntriesByType('navigation')[0],
+        memory: (performance as any).memory,
+        timing: performance.timing,
+      };
+      setPerformanceInfo(perfData);
+    }
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  if (!ENV.IS_DEV) return null;
+
+  const formatBytes = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const formatTime = (timestamp: number) => {
+    return new Date(timestamp).toLocaleTimeString();
   };
 
   return (
-    <div className="space-y-3 text-sm">
-      {/* Environment Info */}
-      <div>
-        <h4 className="font-medium text-yellow-800 mb-2">🌍 Environment</h4>
-        <div className="space-y-1 text-yellow-700">
-          <div className="flex justify-between">
-            <span>Mode:</span>
-            <span className="font-mono bg-yellow-100 px-1 rounded">
-              {devInfo.environment}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span>Version:</span>
-            <span className="font-mono bg-yellow-100 px-1 rounded">
-              {devInfo.buildInfo.version}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span>Network:</span>
-            <span className="font-mono bg-yellow-100 px-1 rounded">
-              {window.location.hostname}:{window.location.port}
-            </span>
-          </div>
-        </div>
-      </div>
+    <div className="fixed top-4 left-4 z-40">
+      <button
+        onClick={() => setIsVisible(!isVisible)}
+        className="bg-gray-800 text-white p-2 rounded-lg shadow-lg hover:bg-gray-700 transition-colors"
+        title="Toggle Dev Info"
+      >
+        {isVisible ? <EyeOff size={16} /> : <Eye size={16} />}
+      </button>
 
-      {/* Session Info */}
-      <div>
-        <h4 className="font-medium text-yellow-800 mb-2">📊 Session</h4>
-        <div className="space-y-1 text-yellow-700">
-          <div className="flex justify-between">
-            <span>Duration:</span>
-            <span className="font-mono bg-yellow-100 px-1 rounded">
-              {sessionInfo.sessionDurationFormatted}
-            </span>
+      {isVisible && (
+        <div className="mt-2 bg-white border rounded-lg shadow-lg p-4 max-w-md text-xs space-y-3 max-h-96 overflow-y-auto">
+          {/* Environment Info */}
+          <div className="space-y-1">
+            <div className="font-semibold text-gray-800 flex items-center gap-1">
+              <Database size={14} />
+              Environment
+            </div>
+            <div className="grid grid-cols-2 gap-1 text-xs">
+              <div>Mode: <span className="font-mono">{envInfo.environment}</span></div>
+              <div>Dev: <span className="font-mono">{envInfo.isDev ? 'Yes' : 'No'}</span></div>
+              <div>Version: <span className="font-mono">{envInfo.version}</span></div>
+              <div>Build: <span className="font-mono">{envInfo.timestamp.split('T')[1]?.slice(0, 8)}</span></div>
+              <div>Supabase: <span className="font-mono">{envInfo.supabaseConfigured ? '✓' : '✗'}</span></div>
+              <div>PWA: <span className="font-mono">{envInfo.pwaEnabled ? '✓' : '✗'}</span></div>
+            </div>
           </div>
-          <div className="flex justify-between">
-            <span>Role Switches:</span>
-            <span className="font-mono bg-yellow-100 px-1 rounded">
-              {sessionInfo.roleSwitches} / {sessionInfo.limits.maxRoleSwitches}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span>Current User:</span>
-            <span className="font-mono bg-yellow-100 px-1 rounded text-xs">
-              {sessionInfo.user || 'None'}
-            </span>
-          </div>
-        </div>
-      </div>
 
-      {/* Browser Info */}
-      <div>
-        <h4 className="font-medium text-yellow-800 mb-2">🌐 Browser</h4>
-        <div className="space-y-1 text-yellow-700">
-          <div className="flex justify-between">
-            <span>URL:</span>
-            <button
-              onClick={() => copyToClipboard(window.location.href)}
-              className="font-mono bg-yellow-100 px-1 rounded text-xs hover:bg-yellow-200"
-              title="Click to copy"
-            >
-              {window.location.pathname}
-            </button>
+          {/* User Info */}
+          <div className="space-y-1 border-t pt-2">
+            <div className="font-semibold text-gray-800 flex items-center gap-1">
+              <User size={14} />
+              User Status
+            </div>
+            <div className="space-y-1">
+              <div>Authenticated: <span className="font-mono">{isAuthenticated ? '✓' : '✗'}</span></div>
+              {user && (
+                <>
+                  <div>Email: <span className="font-mono text-xs">{user.email}</span></div>
+                  <div>Role: <span className="font-mono">{currentRole || 'None'}</span></div>
+                  <div>ID: <span className="font-mono text-xs">{user.id?.slice(0, 8)}...</span></div>
+                </>
+              )}
+              <div>Permissions: <span className="font-mono">{permissions?.length || 0}</span></div>
+              <div>Role Perms: <span className="font-mono">{rolePermissions?.length || 0}</span></div>
+            </div>
           </div>
-          <div className="flex justify-between">
-            <span>User Agent:</span>
-            <button
-              onClick={() => copyToClipboard(navigator.userAgent)}
-              className="font-mono bg-yellow-100 px-1 rounded text-xs hover:bg-yellow-200 truncate max-w-[120px]"
-              title="Click to copy full user agent"
-            >
-              {navigator.userAgent.split(' ')[0]}...
-            </button>
-          </div>
-        </div>
-      </div>
 
-      {/* Quick Debug Actions */}
-      <div className="pt-2 border-t border-yellow-300">
-        <div className="flex gap-2">
-          <button
-            onClick={() => console.table(devInfo)}
-            className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs hover:bg-blue-200"
-          >
-            Log Info
-          </button>
-          <button
-            onClick={() => console.table(sessionInfo)}
-            className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs hover:bg-green-200"
-          >
-            Log Session
-          </button>
-          <button
-            onClick={() => {
-              const debugData = { devInfo, sessionInfo, config: devStore };
-              console.log('🐛 Complete Debug Data:', debugData);
-            }}
-            className="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs hover:bg-purple-200"
-          >
-            Full Debug
-          </button>
+          {/* Network Status */}
+          <div className="space-y-1 border-t pt-2">
+            <div className="font-semibold text-gray-800 flex items-center gap-1">
+              {networkStatus ? <Wifi size={14} /> : <WifiOff size={14} />}
+              Network
+            </div>
+            <div className="space-y-1">
+              <div>Status: <span className="font-mono">{networkStatus ? 'Online' : 'Offline'}</span></div>
+              <div>Connection: <span className="font-mono">{(navigator as any).connection?.effectiveType || 'Unknown'}</span></div>
+            </div>
+          </div>
+
+          {/* Performance Info */}
+          {performanceInfo && (
+            <div className="space-y-1 border-t pt-2">
+              <div className="font-semibold text-gray-800 flex items-center gap-1">
+                <Clock size={14} />
+                Performance
+              </div>
+              <div className="space-y-1">
+                {performanceInfo.memory && (
+                  <>
+                    <div>Used: <span className="font-mono">{formatBytes(performanceInfo.memory.usedJSHeapSize)}</span></div>
+                    <div>Limit: <span className="font-mono">{formatBytes(performanceInfo.memory.jsHeapSizeLimit)}</span></div>
+                  </>
+                )}
+                {performanceInfo.navigation && (
+                  <div>Load: <span className="font-mono">{Math.round(performanceInfo.navigation.loadEventEnd - performanceInfo.navigation.fetchStart)}ms</span></div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Local Storage Info */}
+          <div className="space-y-1 border-t pt-2">
+            <div className="font-semibold text-gray-800 flex items-center gap-1">
+              <Shield size={14} />
+              Storage
+            </div>
+            <div className="space-y-1">
+              <div>localStorage: <span className="font-mono">{localStorage.length} items</span></div>
+              <div>sessionStorage: <span className="font-mono">{sessionStorage.length} items</span></div>
+              <div>Cookies: <span className="font-mono">{document.cookie.split(';').length} items</span></div>
+            </div>
+          </div>
+
+          {/* Quick Actions */}
+          <div className="space-y-1 border-t pt-2">
+            <div className="font-semibold text-gray-800">Quick Actions</div>
+            <div className="flex flex-wrap gap-1">
+              <button
+                onClick={() => console.table(envInfo)}
+                className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded hover:bg-blue-200"
+              >
+                Log Env
+              </button>
+              <button
+                onClick={() => console.table(user)}
+                className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded hover:bg-green-200"
+              >
+                Log User
+              </button>
+              <button
+                onClick={() => console.table(permissions)}
+                className="px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded hover:bg-purple-200"
+              >
+                Log Perms
+              </button>
+            </div>
+          </div>
+
+          {/* Version Info */}
+          <div className="text-xs text-gray-500 border-t pt-2">
+            Last updated: {formatTime(Date.now())}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

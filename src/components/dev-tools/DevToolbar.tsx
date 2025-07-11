@@ -1,462 +1,361 @@
 /**
- * Enhanced Dev Toolbar - AKBID Lab System
- * Day 6: Fixed ESLint warnings + TypeScript errors
- * Status: TypeScript compliant
+ * Enhanced DevToolbar - AKBID Lab System  
+ * Development toolbar with emergency features
+ * Status: Complete with emergency functions
  */
-
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { 
   Settings, 
-  Bug, 
+  Info, 
   RefreshCw, 
-  AlertTriangle,
+  AlertTriangle, 
+  Database, 
+  Trash2, 
+  LogOut, 
+  Users, 
+  RotateCcw,
   Zap,
-  Trash2,
-  Database
+  Bug
 } from 'lucide-react';
 import { ENV, getEnvInfo } from '../../lib/constants/env';
-import { useDevStore } from '../../lib/dev/devStore';
-import { withDevOnly } from '../../lib/dev/guards';
+import { useAuth } from '../../hooks/useAuth';
+import { useRole } from '../../hooks/useRole';
 
-interface DevToolbarProps {
-  className?: string;
-}
-
-// Type for window.__DEV__
-interface DevWindow extends Window {
-  __DEV__?: {
-    config?: Record<string, unknown>;
-  };
-}
-
-// Type for memory performance
-interface MemoryPerformance extends Performance {
-  memory?: {
-    usedJSHeapSize: number;
-    totalJSHeapSize: number;
-    jsHeapSizeLimit: number;
-  };
-}
-
-const DevToolbarComponent: React.FC<DevToolbarProps> = ({ className }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [activePanel, setActivePanel] = useState<'info' | 'emergency' | 'actions' | null>(null);
-  const devStore = useDevStore();
+export const DevToolbar = () => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [emergencyMode, setEmergencyMode] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<string | null>(null);
+  
+  const { logout, user } = useAuth();
+  const { currentRole } = useRole();
   const envInfo = getEnvInfo();
 
-  const togglePanel = (panel: 'info' | 'emergency' | 'actions') => {
-    setActivePanel(activePanel === panel ? null : panel);
-    if (!isExpanded) setIsExpanded(true);
-  };
+  if (!ENV.IS_DEV || !ENV.DEV_TOOLBAR) return null;
 
-  // Emergency functions
+  // Emergency Functions
   const emergencyFunctions = {
-    clearLocalStorage: () => {
-      if (confirm('🚨 Clear all local storage?')) {
-        localStorage.clear();
-        console.log('🧹 Local storage cleared');
-        alert('✅ Local storage cleared!');
+    // Quick database reset (clears local data)
+    resetDatabase: () => {
+      if (confirmAction !== 'resetDatabase') {
+        setConfirmAction('resetDatabase');
+        return;
       }
-    },
-
-    emergencyLogout: () => {
-      if (confirm('🚨 Emergency logout? This will reload the page.')) {
+      
+      try {
+        // Clear all local storage
         localStorage.clear();
         sessionStorage.clear();
+        
+        // Clear IndexedDB if available
+        if ('indexedDB' in window) {
+          indexedDB.deleteDatabase('supabase-cache');
+        }
+        
+        console.log('🔄 Database reset completed');
+        alert('Database reset completed! Page will reload.');
         window.location.reload();
+      } catch (error) {
+        console.error('❌ Database reset failed:', error);
+        alert('Database reset failed!');
       }
+      setConfirmAction(null);
     },
 
-    resetDevSession: () => {
-      if (confirm('Reset development session?')) {
-        devStore.resetSession();
-        console.log('🔄 Dev session reset');
-        alert('✅ Dev session reset!');
-      }
-    },
-
-    exportDevData: () => {
-      const devWindow = window as DevWindow;
-      const devData = {
-        session: devStore.getSessionInfo(),
-        config: devWindow.__DEV__?.config || {},
-        timestamp: new Date().toISOString(),
-        url: window.location.href
-      };
-      
-      const blob = new Blob([JSON.stringify(devData, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `akbid-dev-data-${Date.now()}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-      
-      console.log('📁 Dev data exported');
-    },
-
-    performanceTest: () => {
-      const startTime = performance.now();
-      console.time('Performance Test');
-      
-      for (let i = 0; i < 100000; i++) {
-        Math.random();
+    // Clear all local storage
+    clearStorage: () => {
+      if (confirmAction !== 'clearStorage') {
+        setConfirmAction('clearStorage');
+        return;
       }
       
-      const endTime = performance.now();
-      console.timeEnd('Performance Test');
-      console.log(`⏱️ Performance test: ${(endTime - startTime).toFixed(2)}ms`);
+      try {
+        const beforeCount = localStorage.length + sessionStorage.length;
+        localStorage.clear();
+        sessionStorage.clear();
+        
+        console.log(`🧹 Cleared ${beforeCount} storage items`);
+        alert(`Cleared ${beforeCount} storage items!`);
+      } catch (error) {
+        console.error('❌ Storage clear failed:', error);
+        alert('Storage clear failed!');
+      }
+      setConfirmAction(null);
     },
 
-    networkTest: () => {
-      fetch(window.location.origin)
-        .then(response => {
-          console.log('🌐 Network test result:', {
-            status: response.status,
-            statusText: response.statusText
-          });
-        })
-        .catch(error => {
-          console.error('🌐 Network test failed:', error);
+    // Emergency logout
+    emergencyLogout: () => {
+      if (confirmAction !== 'emergencyLogout') {
+        setConfirmAction('emergencyLogout');
+        return;
+      }
+      
+      try {
+        logout();
+        localStorage.removeItem('auth-token');
+        sessionStorage.removeItem('auth-token');
+        
+        console.log('🚪 Emergency logout completed');
+        alert('Emergency logout completed!');
+        window.location.href = '/login';
+      } catch (error) {
+        console.error('❌ Emergency logout failed:', error);
+        alert('Emergency logout failed!');
+      }
+      setConfirmAction(null);
+    },
+
+    // Direct role switching
+    switchRole: (role: string) => {
+      if (confirmAction !== `switchRole-${role}`) {
+        setConfirmAction(`switchRole-${role}`);
+        return;
+      }
+      
+      try {
+        // Store in localStorage for dev role switching
+        localStorage.setItem('dev-role-override', role);
+        
+        console.log(`🔄 Role switched to: ${role}`);
+        alert(`Role switched to: ${role}! Page will reload.`);
+        window.location.reload();
+      } catch (error) {
+        console.error('❌ Role switch failed:', error);
+        alert('Role switch failed!');
+      }
+      setConfirmAction(null);
+    },
+
+    // Full system reset
+    fullReset: () => {
+      if (confirmAction !== 'fullReset') {
+        setConfirmAction('fullReset');
+        return;
+      }
+      
+      try {
+        // Clear everything
+        localStorage.clear();
+        sessionStorage.clear();
+        
+        // Clear cookies
+        document.cookie.split(";").forEach(cookie => {
+          const eqPos = cookie.indexOf("=");
+          const name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
+          document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
         });
-    }
+        
+        // Clear cache if service worker is available
+        if ('caches' in window) {
+          caches.keys().then(names => {
+            names.forEach(name => caches.delete(name));
+          });
+        }
+        
+        console.log('💥 Full system reset completed');
+        alert('Full system reset completed! Page will reload.');
+        window.location.href = '/';
+      } catch (error) {
+        console.error('❌ Full reset failed:', error);
+        alert('Full reset failed!');
+      }
+      setConfirmAction(null);
+    },
+
+    // Cancel confirmation
+    cancelAction: () => {
+      setConfirmAction(null);
+    },
   };
 
-  const sessionInfo = devStore.getSessionInfo();
+  const roles = ['admin', 'dosen', 'laboran', 'mahasiswa'];
 
   return (
-    <div className={`fixed bottom-4 right-4 z-50 ${className}`} data-dev-toolbar>
-      {/* Panels */}
-      {isExpanded && activePanel && (
-        <div className="mb-4 bg-yellow-50 border-2 border-yellow-300 rounded-lg shadow-xl p-4 min-w-[320px] max-w-[400px]">
+    <div className="fixed bottom-4 right-4 z-50">
+      {/* Main Toolbar Panel */}
+      <div className={`transition-all duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+        <div className="bg-yellow-50 border-2 border-yellow-400 rounded-lg shadow-lg p-4 mb-2 min-w-[350px] max-h-[80vh] overflow-y-auto">
+          {/* Header */}
           <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold text-yellow-800">
-              {activePanel === 'info' && '🐛 Debug Info'}
-              {activePanel === 'emergency' && '🚨 Emergency Tools'}
-              {activePanel === 'actions' && '⚡ Quick Actions'}
-            </h3>
+            <div className="font-semibold text-gray-800 flex items-center gap-2">
+              <Bug size={16} />
+              Development Toolbar
+            </div>
             <button
-              onClick={() => setActivePanel(null)}
-              className="text-yellow-600 hover:text-yellow-800 text-lg"
+              onClick={() => setEmergencyMode(!emergencyMode)}
+              className={`px-2 py-1 text-xs rounded transition-colors ${
+                emergencyMode 
+                  ? 'bg-red-500 text-white' 
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
             >
-              ×
+              {emergencyMode ? 'Exit Emergency' : 'Emergency Mode'}
             </button>
           </div>
-          
-          {/* Info Panel */}
-          {activePanel === 'info' && (
-            <div className="space-y-3 text-sm">
-              <div>
-                <h4 className="font-medium text-yellow-800 mb-2">🌍 Environment</h4>
-                <div className="space-y-1 text-yellow-700">
-                  <div className="flex justify-between">
-                    <span>Mode:</span>
-                    <span className="font-mono bg-yellow-100 px-1 rounded">
-                      {envInfo.environment}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Version:</span>
-                    <span className="font-mono bg-yellow-100 px-1 rounded">
-                      {ENV.APP_VERSION}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Network:</span>
-                    <span className="font-mono bg-yellow-100 px-1 rounded">
-                      {window.location.hostname}:{window.location.port}
-                    </span>
-                  </div>
+
+          {/* Basic Info */}
+          <div className="text-sm space-y-2 mb-4">
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div>Environment: <span className="font-mono font-semibold text-yellow-700">{envInfo.environment}</span></div>
+              <div>Version: <span className="font-mono">{envInfo.version}</span></div>
+              <div>User: <span className="font-mono">{user?.email?.split('@')[0] || 'None'}</span></div>
+              <div>Role: <span className="font-mono font-semibold text-blue-600">{currentRole || 'None'}</span></div>
+              <div>Supabase: <span className="font-mono">{envInfo.supabaseConfigured ? '✅' : '❌'}</span></div>
+              <div>PWA: <span className="font-mono">{envInfo.pwaEnabled ? '✅' : '❌'}</span></div>
+            </div>
+          </div>
+
+          {/* Regular Dev Actions */}
+          {!emergencyMode && (
+            <div className="space-y-3">
+              <div className="border-t pt-3">
+                <div className="text-sm font-medium mb-2">Development Actions</div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button 
+                    onClick={() => console.table(envInfo)}
+                    className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded hover:bg-blue-200"
+                  >
+                    <Info size={12} />
+                    Log ENV
+                  </button>
+                  <button 
+                    onClick={() => window.location.reload()}
+                    className="flex items-center gap-1 px-2 py-1 text-xs bg-green-100 text-green-800 rounded hover:bg-green-200"
+                  >
+                    <RefreshCw size={12} />
+                    Reload
+                  </button>
+                  <button 
+                    onClick={() => console.table(user)}
+                    className="flex items-center gap-1 px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded hover:bg-purple-200"
+                  >
+                    <Users size={12} />
+                    Log User
+                  </button>
+                  <button 
+                    onClick={() => window.open('/dev-panel', '_blank')}
+                    className="flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 text-gray-800 rounded hover:bg-gray-200"
+                  >
+                    <Settings size={12} />
+                    Dev Panel
+                  </button>
                 </div>
               </div>
 
-              <div>
-                <h4 className="font-medium text-yellow-800 mb-2">📊 Session</h4>
-                <div className="space-y-1 text-yellow-700">
-                  <div className="flex justify-between">
-                    <span>Duration:</span>
-                    <span className="font-mono bg-yellow-100 px-1 rounded">
-                      {String(sessionInfo.sessionDurationFormatted)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Role Switches:</span>
-                    <span className="font-mono bg-yellow-100 px-1 rounded">
-                      {String(sessionInfo.roleSwitches)} / {String((sessionInfo.limits as Record<string, unknown>)?.maxRoleSwitches || 'N/A')}
-                    </span>
+              {/* Role Switching */}
+              {ENV.DEV_ROLE_SWITCH && (
+                <div className="border-t pt-3">
+                  <div className="text-sm font-medium mb-2">Quick Role Switch</div>
+                  <div className="grid grid-cols-2 gap-1">
+                    {roles.map(role => (
+                      <button
+                        key={role}
+                        onClick={() => emergencyFunctions.switchRole(role)}
+                        className={`px-2 py-1 text-xs rounded transition-colors ${
+                          currentRole === role
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                        }`}
+                      >
+                        {role.charAt(0).toUpperCase() + role.slice(1)}
+                      </button>
+                    ))}
                   </div>
                 </div>
-              </div>
-
-              <div className="pt-2 border-t border-yellow-300 flex gap-2">
-                <button
-                  onClick={() => console.table(envInfo)}
-                  className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs hover:bg-blue-200"
-                >
-                  Log Info
-                </button>
-                <button
-                  onClick={() => console.table(sessionInfo)}
-                  className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs hover:bg-green-200"
-                >
-                  Log Session
-                </button>
-              </div>
+              )}
             </div>
           )}
 
-          {/* Emergency Panel */}
-          {activePanel === 'emergency' && (
-            <div className="space-y-4">
-              <div className="bg-red-50 border border-red-200 rounded p-2">
-                <div className="flex items-center gap-2 text-red-700">
+          {/* Emergency Actions */}
+          {emergencyMode && (
+            <div className="space-y-3">
+              <div className="bg-red-50 border border-red-200 rounded p-3">
+                <div className="flex items-center gap-2 text-red-800 font-medium mb-2">
                   <AlertTriangle size={16} />
-                  <span className="text-sm font-medium">Emergency Tools</span>
+                  Emergency Actions
                 </div>
-                <p className="text-xs text-red-600 mt-1">
-                  Use these tools only when normal functions fail
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={emergencyFunctions.clearLocalStorage}
-                  className="flex items-center gap-2 p-2 bg-orange-100 text-orange-800 rounded text-sm hover:bg-orange-200"
-                >
-                  <Trash2 size={14} />
-                  <span>Clear Local</span>
-                </button>
-
-                <button
-                  onClick={emergencyFunctions.emergencyLogout}
-                  className="flex items-center gap-2 p-2 bg-red-100 text-red-800 rounded text-sm hover:bg-red-200"
-                >
-                  <AlertTriangle size={14} />
-                  <span>Emergency Logout</span>
-                </button>
-
-                <button
-                  onClick={emergencyFunctions.resetDevSession}
-                  className="flex items-center gap-2 p-2 bg-blue-100 text-blue-800 rounded text-sm hover:bg-blue-200"
-                >
-                  <RefreshCw size={14} />
-                  <span>Reset Dev</span>
-                </button>
-
-                <button
-                  onClick={emergencyFunctions.exportDevData}
-                  className="flex items-center gap-2 p-2 bg-purple-100 text-purple-800 rounded text-sm hover:bg-purple-200"
-                >
-                  <Database size={14} />
-                  <span>Export Data</span>
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Actions Panel */}
-          {activePanel === 'actions' && (
-            <div className="space-y-4">
-              <div>
-                <h4 className="font-medium text-yellow-800 mb-2">⚡ Quick Tests</h4>
-                <div className="grid grid-cols-2 gap-1">
+                
+                {confirmAction && (
+                  <div className="mb-3 p-2 bg-yellow-100 border border-yellow-300 rounded">
+                    <div className="text-xs text-yellow-800 mb-2">
+                      ⚠️ Confirm action: <strong>{confirmAction}</strong>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          if (confirmAction.startsWith('switchRole-')) {
+                            const role = confirmAction.split('-')[1];
+                            emergencyFunctions.switchRole(role);
+                          } else {
+                            (emergencyFunctions as any)[confirmAction]();
+                          }
+                        }}
+                        className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600"
+                      >
+                        Confirm
+                      </button>
+                      <button
+                        onClick={emergencyFunctions.cancelAction}
+                        className="px-2 py-1 text-xs bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="grid grid-cols-1 gap-2">
                   <button
-                    onClick={emergencyFunctions.performanceTest}
-                    className="px-2 py-1 bg-green-100 text-green-800 rounded text-xs hover:bg-green-200"
+                    onClick={emergencyFunctions.resetDatabase}
+                    className="flex items-center gap-2 px-3 py-2 text-sm bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
                   >
-                    Performance
+                    <Database size={14} />
+                    Reset Database
                   </button>
                   
                   <button
-                    onClick={emergencyFunctions.networkTest}
-                    className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs hover:bg-blue-200"
+                    onClick={emergencyFunctions.clearStorage}
+                    className="flex items-center gap-2 px-3 py-2 text-sm bg-orange-500 text-white rounded hover:bg-orange-600 transition-colors"
                   >
-                    Network
+                    <Trash2 size={14} />
+                    Clear All Storage
                   </button>
                   
                   <button
-                    onClick={() => {
-                      console.group('🧪 Console Test');
-                      console.log('ℹ️ Info log');
-                      console.warn('⚠️ Warning log');
-                      console.error('❌ Error log');
-                      console.groupEnd();
-                    }}
-                    className="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs hover:bg-purple-200"
+                    onClick={emergencyFunctions.emergencyLogout}
+                    className="flex items-center gap-2 px-3 py-2 text-sm bg-purple-500 text-white rounded hover:bg-purple-600 transition-colors"
                   >
-                    Console
+                    <LogOut size={14} />
+                    Emergency Logout
                   </button>
                   
                   <button
-                    onClick={() => {
-                      const memoryPerformance = performance as MemoryPerformance;
-                      if (memoryPerformance.memory) {
-                        const memory = memoryPerformance.memory;
-                        console.log('💾 Memory usage:', {
-                          used: `${(memory.usedJSHeapSize / 1048576).toFixed(2)} MB`,
-                          total: `${(memory.totalJSHeapSize / 1048576).toFixed(2)} MB`,
-                        });
-                      } else {
-                        console.log('💾 Memory API not available in this browser');
-                      }
-                    }}
-                    className="px-2 py-1 bg-orange-100 text-orange-800 rounded text-xs hover:bg-orange-200"
+                    onClick={emergencyFunctions.fullReset}
+                    className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-800 text-white rounded hover:bg-gray-900 transition-colors"
                   >
-                    Memory
+                    <RotateCcw size={14} />
+                    Full System Reset
                   </button>
-                </div>
-              </div>
-
-              <div>
-                <h4 className="font-medium text-yellow-800 mb-2">🔧 Feature Toggles</h4>
-                <div className="space-y-1">
-                  <label className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={devStore.mockApiEnabled}
-                      onChange={devStore.toggleMockApi}
-                      className="w-3 h-3"
-                    />
-                    <span>Mock API</span>
-                  </label>
-                  
-                  <label className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={devStore.performanceMonitoringEnabled}
-                      onChange={devStore.togglePerformanceMonitoring}
-                      className="w-3 h-3"
-                    />
-                    <span>Performance Monitor</span>
-                  </label>
-                  
-                  <label className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={devStore.debugMode}
-                      onChange={devStore.toggleDebugMode}
-                      className="w-3 h-3"
-                    />
-                    <span>Debug Mode</span>
-                  </label>
                 </div>
               </div>
             </div>
           )}
         </div>
-      )}
-
-      {/* Main Toolbar */}
-      <div className="bg-yellow-400 border-2 border-yellow-500 rounded-lg shadow-lg">
-        {/* Expanded View */}
-        {isExpanded && (
-          <div className="p-3 border-b border-yellow-500">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              <span className="text-sm font-medium text-yellow-900">
-                AKBID Dev Tools
-              </span>
-              <span className="text-xs text-yellow-700 bg-yellow-200 px-1 rounded">
-                v{ENV.APP_VERSION}
-              </span>
-            </div>
-            
-            {/* Quick Stats */}
-            <div className="grid grid-cols-3 gap-2 text-xs text-yellow-800">
-              <div className="text-center">
-                <div className="font-semibold">{devStore.roleSwitchCount}</div>
-                <div>Role Switches</div>
-              </div>
-              <div className="text-center">
-                <div className="font-semibold">
-                  {devStore.currentTestUser ? '✓' : '○'}
-                </div>
-                <div>Test User</div>
-              </div>
-              <div className="text-center">
-                <div className="font-semibold">
-                  {window.location.hostname.startsWith('192.168.') ? 'NET' : 'LOCAL'}
-                </div>
-                <div>Mode</div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Action Buttons */}
-        <div className="p-2">
-          {isExpanded ? (
-            <div className="grid grid-cols-4 gap-1">
-              <button
-                onClick={() => togglePanel('info')}
-                className={`p-2 rounded text-yellow-900 hover:bg-yellow-300 transition-colors ${
-                  activePanel === 'info' ? 'bg-yellow-300' : ''
-                }`}
-                title="Debug Info"
-              >
-                <Bug size={16} />
-              </button>
-              
-              <button
-                onClick={() => togglePanel('emergency')}
-                className={`p-2 rounded text-yellow-900 hover:bg-yellow-300 transition-colors ${
-                  activePanel === 'emergency' ? 'bg-yellow-300' : ''
-                }`}
-                title="Emergency Tools"
-              >
-                <AlertTriangle size={16} />
-              </button>
-              
-              <button
-                onClick={() => togglePanel('actions')}
-                className={`p-2 rounded text-yellow-900 hover:bg-yellow-300 transition-colors ${
-                  activePanel === 'actions' ? 'bg-yellow-300' : ''
-                }`}
-                title="Quick Actions"
-              >
-                <Zap size={16} />
-              </button>
-              
-              <button
-                onClick={() => setIsExpanded(false)}
-                className="p-2 rounded text-yellow-900 hover:bg-yellow-300 transition-colors"
-                title="Collapse"
-              >
-                <Settings size={16} />
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => setIsExpanded(true)}
-              className="p-3 rounded-full text-yellow-900 hover:bg-yellow-300 transition-colors"
-              title="Expand Dev Tools"
-            >
-              <Settings size={20} />
-            </button>
-          )}
-        </div>
       </div>
 
-      {/* Emergency Quick Access */}
-      <div className="mt-2 flex gap-1">
-        <button
-          onClick={() => window.location.reload()}
-          className="p-1 bg-orange-500 text-white rounded text-xs hover:bg-orange-600"
-          title="Emergency Reload"
-        >
-          <RefreshCw size={12} />
-        </button>
-        
-        <button
-          onClick={emergencyFunctions.clearLocalStorage}
-          className="p-1 bg-red-500 text-white rounded text-xs hover:bg-red-600"
-          title="Emergency Clear"
-        >
-          <Trash2 size={12} />
-        </button>
-      </div>
+      {/* Toggle Button */}
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className={`text-white p-3 rounded-full shadow-lg transition-all duration-300 ${
+          emergencyMode 
+            ? 'bg-red-600 hover:bg-red-700 animate-pulse' 
+            : isOpen
+            ? 'bg-yellow-600 hover:bg-yellow-700'
+            : 'bg-yellow-500 hover:bg-yellow-600'
+        }`}
+        title="Development Toolbar"
+      >
+        {emergencyMode ? <Zap size={20} /> : <Settings size={20} />}
+      </button>
     </div>
   );
 };
-
-export const DevToolbar = withDevOnly(DevToolbarComponent);

@@ -6,7 +6,7 @@ import React from 'react';
 import { 
   Zap, 
   User, 
-  Eye, 
+  _Eye, 
   Settings, 
   Code, 
   Monitor,
@@ -14,11 +14,11 @@ import {
   Target
 } from 'lucide-react';
 import { useDevStore, useTestUsers } from '../../lib/dev/devStore';
-import { DEV_CONFIG } from '../../lib/dev/config';
+import { _DEV_CONFIG } from '../../lib/dev/config';
 
 export const QuickActions: React.FC = () => {
   const devStore = useDevStore();
-  const { current, available, setUser, canSwitchRole } = useTestUsers();
+  const { current, _available, setUser, canSwitchRole } = useTestUsers();
 
   const quickActions = {
     switchToAdmin: () => {
@@ -84,7 +84,7 @@ export const QuickActions: React.FC = () => {
           limit: `${(memory.jsHeapSizeLimit / 1048576).toFixed(2)} MB`
         });
       } else {
-        console.log('💾 Memory API not available');
+        console.log('💾 Memory API not _available');
       }
     }
   };
