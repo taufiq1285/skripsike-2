@@ -1,6 +1,6 @@
 // src/App.tsx
 import { useEffect, useState } from 'react';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { ENV, validateEnv, getEnvInfo } from './lib/constants/env';
 import { DevIndicators, DevToolbar, DevInfo } from './components/dev-tools';
@@ -9,6 +9,7 @@ import { LoadingState } from './components/common/LoadingState';
 import { Button } from './components/ui/Button';
 import { Badge } from './components/ui/Badge';
 import { Card } from './components/ui/Card';
+import ValidationDashboard from './pages/validation/ValidationDashboard';
 
 function App() {
   const [isLoading, setIsLoading] = useState(true);
@@ -76,9 +77,12 @@ function App() {
             </>
           )}
           
-          {/* Main Application */}
+          {/* Main Application with Routes */}
           <div className="container mx-auto px-4 py-8">
-            <WelcomeScreen envValidated={envValidated} />
+            <Routes>
+              <Route path="/" element={<WelcomeScreen envValidated={envValidated} />} />
+              <Route path="/validation" element={<ValidationDashboard />} />
+            </Routes>
           </div>
           
           {/* Toast Notifications */}
@@ -111,6 +115,12 @@ const WelcomeScreen = ({ envValidated }: WelcomeScreenProps) => {
     // For now, show alert since no routing yet
     alert('Login page belum dibuat. Ini akan redirect ke /login setelah routing setup.');
     console.log('🔗 Navigate to: /login');
+  };
+
+  const handleGoToValidation = () => {
+    // Navigate to validation dashboard
+    window.location.href = '/validation';
+    console.log('🔗 Navigate to: /validation');
   };
 
   const handleShowEnvironmentInfo = () => {
@@ -260,6 +270,14 @@ const WelcomeScreen = ({ envValidated }: WelcomeScreenProps) => {
               className="w-full"
             >
               Go to Login
+            </Button>
+            
+            <Button 
+              onClick={handleGoToValidation}
+              className="w-full"
+              variant="outline"
+            >
+              Go to Validation Dashboard
             </Button>
             
             {ENV.IS_DEV && (

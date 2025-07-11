@@ -1,9 +1,9 @@
 /**
  * Enhanced DevToolbar - AKBID Lab System  
- * Development toolbar with emergency features
- * Status: Complete with emergency functions
+ * Development toolbar with emergency features + enhanced functionality
+ * Status: Complete with enhanced features (Direct Replacement)
  */
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Settings, 
   Info, 
@@ -12,10 +12,13 @@ import {
   Database, 
   Trash2, 
   LogOut, 
-  Users, 
-  RotateCcw,
   Zap,
-  Bug
+  Bug,
+  Download,
+  Copy,
+  EyeOff,
+  Terminal,
+  Activity
 } from 'lucide-react';
 import { ENV, getEnvInfo } from '../../lib/constants/env';
 import { useAuth } from '../../hooks/useAuth';
@@ -25,12 +28,55 @@ export const DevToolbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [emergencyMode, setEmergencyMode] = useState(false);
   const [confirmAction, setConfirmAction] = useState<string | null>(null);
+  const [performanceData, setPerformanceData] = useState<any>({});
+  const [consoleVisible, setConsoleVisible] = useState(false);
+  const [logs, setLogs] = useState<any[]>([]);
   
   const { logout, user } = useAuth();
   const { currentRole } = useRole();
   const envInfo = getEnvInfo();
 
+  // Performance monitoring
+  useEffect(() => {
+    if (!ENV.IS_DEV) return;
+
+    const updatePerformance = () => {
+      const memory = (performance as any).memory;
+      const navigation = performance.getEntriesByType('navigation')[0] as any;
+      
+      setPerformanceData({
+        memory: memory ? {
+          used: (memory.usedJSHeapSize / 1048576).toFixed(2),
+          total: (memory.totalJSHeapSize / 1048576).toFixed(2),
+          limit: (memory.jsHeapSizeLimit / 1048576).toFixed(2)
+        } : null,
+        timing: navigation ? {
+          loadTime: Math.round(navigation.loadEventEnd - navigation.fetchStart),
+          domReady: Math.round(navigation.domContentLoadedEventEnd - navigation.fetchStart)
+        } : null,
+        connection: (navigator as any).connection ? {
+          type: (navigator as any).connection.effectiveType,
+          downlink: (navigator as any).connection.downlink
+        } : null
+      });
+    };
+
+    updatePerformance();
+    const interval = setInterval(updatePerformance, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
   if (!ENV.IS_DEV || !ENV.DEV_TOOLBAR) return null;
+
+  const addLog = (message: string, type: string = 'info') => {
+    const log = {
+      id: Date.now(),
+      timestamp: new Date().toLocaleTimeString(),
+      message,
+      type
+    };
+    setLogs(prev => [...prev.slice(-49), log]); // Keep last 50 logs
+  };
 
   // Emergency Functions
   const emergencyFunctions = {
@@ -51,11 +97,13 @@ export const DevToolbar = () => {
           indexedDB.deleteDatabase('supabase-cache');
         }
         
+        addLog('🔄 Database reset completed', 'success');
         console.log('🔄 Database reset completed');
         alert('Database reset completed! Page will reload.');
         window.location.reload();
       } catch (error) {
         console.error('❌ Database reset failed:', error);
+        addLog('❌ Database reset failed: ' + (error as Error).message, 'error');
         alert('Database reset failed!');
       }
       setConfirmAction(null);
@@ -73,10 +121,12 @@ export const DevToolbar = () => {
         localStorage.clear();
         sessionStorage.clear();
         
+        addLog(`🧹 Cleared ${beforeCount} storage items`, 'success');
         console.log(`🧹 Cleared ${beforeCount} storage items`);
         alert(`Cleared ${beforeCount} storage items!`);
       } catch (error) {
         console.error('❌ Storage clear failed:', error);
+        addLog('❌ Storage clear failed: ' + (error as Error).message, 'error');
         alert('Storage clear failed!');
       }
       setConfirmAction(null);
@@ -94,11 +144,13 @@ export const DevToolbar = () => {
         localStorage.removeItem('auth-token');
         sessionStorage.removeItem('auth-token');
         
+        addLog('🚪 Emergency logout completed', 'success');
         console.log('🚪 Emergency logout completed');
         alert('Emergency logout completed!');
         window.location.href = '/login';
       } catch (error) {
         console.error('❌ Emergency logout failed:', error);
+        addLog('❌ Emergency logout failed: ' + (error as Error).message, 'error');
         alert('Emergency logout failed!');
       }
       setConfirmAction(null);
@@ -115,50 +167,91 @@ export const DevToolbar = () => {
         // Store in localStorage for dev role switching
         localStorage.setItem('dev-role-override', role);
         
+        addLog(`🔄 Role switched to: ${role}`, 'success');
         console.log(`🔄 Role switched to: ${role}`);
         alert(`Role switched to: ${role}! Page will reload.`);
         window.location.reload();
       } catch (error) {
         console.error('❌ Role switch failed:', error);
+        addLog('❌ Role switch failed: ' + (error as Error).message, 'error');
         alert('Role switch failed!');
       }
       setConfirmAction(null);
     },
 
-    // Full system reset
-    fullReset: () => {
-      if (confirmAction !== 'fullReset') {
-        setConfirmAction('fullReset');
-        return;
-      }
-      
+    // Export debug data
+    exportDevData: () => {
       try {
-        // Clear everything
-        localStorage.clear();
-        sessionStorage.clear();
+        const devData = {
+          timestamp: new Date().toISOString(),
+          url: window.location.href,
+          user: user,
+          role: currentRole,
+          envInfo: envInfo,
+          localStorage: Object.fromEntries(
+            Object.entries(localStorage).map(([k, v]) => [k, v.length > 100 ? v.substring(0, 100) + '...' : v])
+          ),
+          sessionStorage: Object.fromEntries(
+            Object.entries(sessionStorage).map(([k, v]) => [k, v.length > 100 ? v.substring(0, 100) + '...' : v])
+          ),
+          performance: performanceData,
+          logs: logs.slice(-50), // Last 50 logs
+          navigator: {
+            userAgent: navigator.userAgent,
+            language: navigator.language,
+            platform: navigator.platform,
+            cookieEnabled: navigator.cookieEnabled,
+            onLine: navigator.onLine
+          }
+        };
         
-        // Clear cookies
-        document.cookie.split(";").forEach(cookie => {
-          const eqPos = cookie.indexOf("=");
-          const name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie;
-          document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/";
-        });
+        const blob = new Blob([JSON.stringify(devData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `akbid-dev-data-${Date.now()}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
         
-        // Clear cache if service worker is available
-        if ('caches' in window) {
-          caches.keys().then(names => {
-            names.forEach(name => caches.delete(name));
-          });
-        }
-        
-        console.log('💥 Full system reset completed');
-        alert('Full system reset completed! Page will reload.');
-        window.location.href = '/';
+        addLog('📁 Dev data exported', 'success');
+        console.log('📁 Dev data exported');
       } catch (error) {
-        console.error('❌ Full reset failed:', error);
-        alert('Full reset failed!');
+        addLog('❌ Export failed: ' + (error as Error).message, 'error');
+        console.error('❌ Export failed:', error);
       }
-      setConfirmAction(null);
+    },
+
+    // Copy to clipboard
+    copyToClipboard: async (text: string) => {
+      try {
+        await navigator.clipboard.writeText(text);
+        addLog('📋 Copied to clipboard', 'success');
+      } catch (error) {
+        addLog('❌ Copy failed: ' + (error as Error).message, 'error');
+      }
+    },
+
+    // Run health check
+    runHealthCheck: async () => {
+      addLog('🩺 Running health check...', 'info');
+      
+      const checks = [
+        { name: 'Local Storage', check: () => { localStorage.setItem('test', 'test'); localStorage.removeItem('test'); return true; } },
+        { name: 'Session Storage', check: () => { sessionStorage.setItem('test', 'test'); sessionStorage.removeItem('test'); return true; } },
+        { name: 'IndexedDB', check: () => 'indexedDB' in window },
+        { name: 'Service Worker', check: () => 'serviceWorker' in navigator },
+        { name: 'Fetch API', check: () => 'fetch' in window },
+        { name: 'WebSocket', check: () => 'WebSocket' in window }
+      ];
+      
+      checks.forEach(({ name, check }) => {
+        try {
+          const result = check();
+          addLog(`${result ? '✅' : '❌'} ${name}: ${result ? 'OK' : 'FAIL'}`, result ? 'success' : 'error');
+        } catch (error) {
+          addLog(`❌ ${name}: ERROR - ${(error as Error).message}`, 'error');
+        }
+      });
     },
 
     // Cancel confirmation
@@ -167,10 +260,51 @@ export const DevToolbar = () => {
     },
   };
 
-  const roles = ['admin', 'dosen', 'laboran', 'mahasiswa'];
+  const roles = ['admin', 'dosen', 'laboran', 'mahasiswa', 'dev_super'];
 
   return (
     <div className="fixed bottom-4 right-4 z-50">
+      {/* Console Panel */}
+      {consoleVisible && (
+        <div className="mb-2 bg-gray-900 text-green-400 rounded-lg shadow-lg w-96 h-64 flex flex-col">
+          <div className="flex items-center justify-between p-2 border-b border-gray-700">
+            <div className="flex items-center gap-2">
+              <Terminal size={14} />
+              <span className="text-sm font-medium">Dev Console</span>
+            </div>
+            <button
+              onClick={() => setConsoleVisible(false)}
+              className="text-gray-400 hover:text-white"
+            >
+              <EyeOff size={14} />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-2 font-mono text-xs">
+            {logs.map(log => (
+              <div
+                key={log.id}
+                className={`mb-1 ${
+                  log.type === 'error' ? 'text-red-400' :
+                  log.type === 'success' ? 'text-green-400' :
+                  log.type === 'warning' ? 'text-yellow-400' :
+                  'text-gray-300'
+                }`}
+              >
+                <span className="text-gray-500">[{log.timestamp}]</span> {log.message}
+              </div>
+            ))}
+          </div>
+          <div className="p-2 border-t border-gray-700">
+            <button
+              onClick={() => setLogs([])}
+              className="text-xs text-gray-400 hover:text-white"
+            >
+              Clear logs
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Main Toolbar Panel */}
       <div className={`transition-all duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
         <div className="bg-yellow-50 border-2 border-yellow-400 rounded-lg shadow-lg p-4 mb-2 min-w-[350px] max-h-[80vh] overflow-y-auto">
@@ -178,18 +312,30 @@ export const DevToolbar = () => {
           <div className="flex items-center justify-between mb-3">
             <div className="font-semibold text-gray-800 flex items-center gap-2">
               <Bug size={16} />
-              Development Toolbar
+              Enhanced Development Toolbar
             </div>
-            <button
-              onClick={() => setEmergencyMode(!emergencyMode)}
-              className={`px-2 py-1 text-xs rounded transition-colors ${
-                emergencyMode 
-                  ? 'bg-red-500 text-white' 
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-            >
-              {emergencyMode ? 'Exit Emergency' : 'Emergency Mode'}
-            </button>
+            <div className="flex gap-1">
+              <button
+                onClick={() => setConsoleVisible(!consoleVisible)}
+                className={`px-2 py-1 text-xs rounded transition-colors ${
+                  consoleVisible 
+                    ? 'bg-gray-800 text-white' 
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                Console
+              </button>
+              <button
+                onClick={() => setEmergencyMode(!emergencyMode)}
+                className={`px-2 py-1 text-xs rounded transition-colors ${
+                  emergencyMode 
+                    ? 'bg-red-500 text-white' 
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                {emergencyMode ? 'Exit Emergency' : 'Emergency Mode'}
+              </button>
+            </div>
           </div>
 
           {/* Basic Info */}
@@ -202,6 +348,17 @@ export const DevToolbar = () => {
               <div>Supabase: <span className="font-mono">{envInfo.supabaseConfigured ? '✅' : '❌'}</span></div>
               <div>PWA: <span className="font-mono">{envInfo.pwaEnabled ? '✅' : '❌'}</span></div>
             </div>
+
+            {/* Performance Metrics */}
+            {performanceData.memory && (
+              <div className="mt-2 pt-2 border-t border-gray-300">
+                <div className="text-xs text-gray-600 mb-1">Performance:</div>
+                <div className="grid grid-cols-2 gap-1 text-xs">
+                  <div>Memory: <span className="font-mono">{performanceData.memory.used}MB</span></div>
+                  <div>Load: <span className="font-mono">{performanceData.timing?.loadTime}ms</span></div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Regular Dev Actions */}
@@ -225,18 +382,18 @@ export const DevToolbar = () => {
                     Reload
                   </button>
                   <button 
-                    onClick={() => console.table(user)}
+                    onClick={() => emergencyFunctions.runHealthCheck()}
                     className="flex items-center gap-1 px-2 py-1 text-xs bg-purple-100 text-purple-800 rounded hover:bg-purple-200"
                   >
-                    <Users size={12} />
-                    Log User
+                    <Activity size={12} />
+                    Health Check
                   </button>
                   <button 
-                    onClick={() => window.open('/dev-panel', '_blank')}
-                    className="flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 text-gray-800 rounded hover:bg-gray-200"
+                    onClick={() => emergencyFunctions.exportDevData()}
+                    className="flex items-center gap-1 px-2 py-1 text-xs bg-orange-100 text-orange-800 rounded hover:bg-orange-200"
                   >
-                    <Settings size={12} />
-                    Dev Panel
+                    <Download size={12} />
+                    Export Data
                   </button>
                 </div>
               </div>
@@ -245,7 +402,7 @@ export const DevToolbar = () => {
               {ENV.DEV_ROLE_SWITCH && (
                 <div className="border-t pt-3">
                   <div className="text-sm font-medium mb-2">Quick Role Switch</div>
-                  <div className="grid grid-cols-2 gap-1">
+                  <div className="grid grid-cols-3 gap-1">
                     {roles.map(role => (
                       <button
                         key={role}
@@ -262,6 +419,27 @@ export const DevToolbar = () => {
                   </div>
                 </div>
               )}
+
+              {/* Quick Copy Actions */}
+              <div className="border-t pt-3">
+                <div className="text-sm font-medium mb-2">Quick Copy</div>
+                <div className="grid grid-cols-2 gap-1">
+                  <button
+                    onClick={() => emergencyFunctions.copyToClipboard(window.location.href)}
+                    className="flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 text-gray-800 rounded hover:bg-gray-200"
+                  >
+                    <Copy size={12} />
+                    URL
+                  </button>
+                  <button
+                    onClick={() => emergencyFunctions.copyToClipboard(JSON.stringify(user, null, 2))}
+                    className="flex items-center gap-1 px-2 py-1 text-xs bg-gray-100 text-gray-800 rounded hover:bg-gray-200"
+                  >
+                    <Copy size={12} />
+                    User Data
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 
@@ -329,11 +507,11 @@ export const DevToolbar = () => {
                   </button>
                   
                   <button
-                    onClick={emergencyFunctions.fullReset}
-                    className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-800 text-white rounded hover:bg-gray-900 transition-colors"
+                    onClick={() => emergencyFunctions.exportDevData()}
+                    className="flex items-center gap-2 px-3 py-2 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
                   >
-                    <RotateCcw size={14} />
-                    Full System Reset
+                    <Download size={14} />
+                    Export Debug Data
                   </button>
                 </div>
               </div>
@@ -352,7 +530,7 @@ export const DevToolbar = () => {
             ? 'bg-yellow-600 hover:bg-yellow-700'
             : 'bg-yellow-500 hover:bg-yellow-600'
         }`}
-        title="Development Toolbar"
+        title="Enhanced Development Toolbar"
       >
         {emergencyMode ? <Zap size={20} /> : <Settings size={20} />}
       </button>

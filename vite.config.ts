@@ -82,6 +82,22 @@ export default defineConfig({
   server: {
     host: true,
     port: 3000,
+    strictPort: true,
+    // Fix WebSocket connection issues
+    hmr: {
+      port: 3001, // Use different port for HMR WebSocket
+      host: 'localhost', // Explicitly set HMR host
+    },
+    // Alternative fix if above doesn't work:
+    // hmr: {
+    //   clientPort: 3000,
+    //   host: 'localhost'
+    // },
+    
+    // For development stability
+    watch: {
+      usePolling: false, // Set to true if you're on WSL or have file watching issues
+    },
   },
   build: {
     rollupOptions: {
@@ -96,4 +112,16 @@ export default defineConfig({
       },
     },
   },
+  
+  // Additional options for troubleshooting
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'react-router-dom'],
+  },
+  
+  // Uncomment if you're still having issues and want to disable HMR temporarily
+  // server: {
+  //   host: true,
+  //   port: 3000,
+  //   hmr: false, // Disables hot reload but fixes WebSocket issues
+  // },
 });
